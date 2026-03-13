@@ -1,1 +1,1 @@
-{"version":2,"builds":[{"src":"backend/app.js","use":"@vercel/node"}],"routes":[{"src":"/(.*)","dest":"/backend/app.js"}]}
+{"version":2,"builds":[{"src":"backend/app.js","use":"@vercel/node","config":{"includeFiles":["backend/**"]}}],"routes":[{"src":"/(.*)","dest":"/backend/app.js"}]}

@@ -23,6 +23,13 @@ class AuthService {
     return IOClient(httpClient);
   }
 
+  // ✅ Safely extract string from dynamic value
+  static String _str(dynamic val, String fallback) {
+    if (val == null) return fallback;
+    if (val is String) return val;
+    return val.toString();
+  }
+
   // ── LOGIN ──
   static Future<AuthResult> login(String username, String password) async {
     final client = _getClient();
@@ -36,7 +43,7 @@ class AuthService {
             },
             body: json.encode({'username': username, 'password': password}),
           )
-          .timeout(const Duration(seconds: 15)); // ✅ timeout added
+          .timeout(const Duration(seconds: 15));
 
       final body = res.body.trim();
       if (body.isEmpty || body.startsWith('<')) {
@@ -51,21 +58,20 @@ class AuthService {
             data['token'] ?? data['accessToken'] ?? data['access_token'];
         if (token != null) {
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('token', token);
-          ApiService.setAuthToken(token);
+          await prefs.setString('token', token.toString());
+          ApiService.setAuthToken(token.toString());
         }
         return const AuthResult(success: true);
       }
       return AuthResult(
         success: false,
-        errorMessage:
-            data['message'] ?? data['error'] ?? 'Invalid username or password.',
+        errorMessage: _str(
+          data['message'] ?? data['error'],
+          'Invalid username or password.',
+        ),
       );
     } catch (e) {
-      return AuthResult(
-        success: false,
-        errorMessage: 'Request timed out or failed: ${e.toString()}',
-      );
+      return AuthResult(success: false, errorMessage: e.toString());
     } finally {
       client.close();
     }
@@ -87,12 +93,12 @@ class AuthService {
               'Accept': 'application/json',
             },
             body: json.encode({
-              'fullname': fullName, // ✅ fixed: backend expects 'fullname'
+              'fullname': fullName,
               'username': username,
               'password': password,
             }),
           )
-          .timeout(const Duration(seconds: 15)); // ✅ timeout added
+          .timeout(const Duration(seconds: 15));
 
       final body = res.body.trim();
       if (body.isEmpty || body.startsWith('<')) {
@@ -104,14 +110,13 @@ class AuthService {
       }
       return AuthResult(
         success: false,
-        errorMessage:
-            data['message'] ?? data['error'] ?? 'Registration failed.',
+        errorMessage: _str(
+          data['message'] ?? data['error'],
+          'Registration failed.',
+        ),
       );
     } catch (e) {
-      return AuthResult(
-        success: false,
-        errorMessage: 'Request timed out or failed: ${e.toString()}',
-      );
+      return AuthResult(success: false, errorMessage: e.toString());
     } finally {
       client.close();
     }
