@@ -7,29 +7,28 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://sangabriel-p10-p11-3wy5.vercel.app';
+  static const String baseUrl = 'https://adet-sample.vercel.app';
 
   static const String _userBase = '$baseUrl/api/user';
   static const String _authBase = '$baseUrl/api/auth';
+
+  static const _timeout = Duration(seconds: 15); // ✅ global timeout
 
   static final Map<String, String> _headers = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
 
-  // ── Save token after login ──
   static void setAuthToken(String token) {
     _headers['Authorization'] = 'Bearer $token';
   }
 
-  // ── Load saved token from storage ──
   static Future<void> loadToken() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
     if (token != null) setAuthToken(token);
   }
 
-  // ── SSL bypass for dev ──
   static http.Client _getClient() {
     final httpClient = HttpClient()
       ..badCertificateCallback =
@@ -37,7 +36,6 @@ class ApiService {
     return IOClient(httpClient);
   }
 
-  // ── Safe JSON parser ──
   static dynamic _parse(http.Response res, String label) {
     dev.log(
       '[$label] ${res.statusCode} → ${res.body.length > 200 ? res.body.substring(0, 200) : res.body}',
@@ -55,17 +53,16 @@ class ApiService {
     }
   }
 
-  // ════════════════════════════════════════
-  //  AUTH — POST /api/auth/login
-  // ════════════════════════════════════════
   static Future<bool> login(String username, String password) async {
     final client = _getClient();
     try {
-      final res = await client.post(
-        Uri.parse('$_authBase/login'),
-        headers: _headers,
-        body: json.encode({'username': username, 'password': password}),
-      );
+      final res = await client
+          .post(
+            Uri.parse('$_authBase/login'),
+            headers: _headers,
+            body: json.encode({'username': username, 'password': password}),
+          )
+          .timeout(_timeout);
       final data = _parse(res, 'POST /api/auth/login');
       if (res.statusCode == 200) {
         final token =
@@ -83,14 +80,13 @@ class ApiService {
     }
   }
 
-  // ════════════════════════════════════════
-  //  READ ALL — GET /api/user
-  // ════════════════════════════════════════
   static Future<List<UserModel>> getUsers() async {
-    await loadToken(); // ✅ ensure token is loaded
+    await loadToken();
     final client = _getClient();
     try {
-      final res = await client.get(Uri.parse(_userBase), headers: _headers);
+      final res = await client
+          .get(Uri.parse(_userBase), headers: _headers)
+          .timeout(_timeout);
       final data = _parse(res, 'GET /api/user');
       if (res.statusCode == 200) {
         final list = data is List
@@ -106,17 +102,13 @@ class ApiService {
     }
   }
 
-  // ════════════════════════════════════════
-  //  READ ONE — GET /api/user/:id
-  // ════════════════════════════════════════
   static Future<UserModel> getUserById(int id) async {
-    await loadToken(); // ✅ added
+    await loadToken();
     final client = _getClient();
     try {
-      final res = await client.get(
-        Uri.parse('$_userBase/$id'),
-        headers: _headers,
-      );
+      final res = await client
+          .get(Uri.parse('$_userBase/$id'), headers: _headers)
+          .timeout(_timeout);
       final data = _parse(res, 'GET /api/user/$id');
       if (res.statusCode == 200) {
         final obj = data is Map ? data : data['data'];
@@ -128,18 +120,17 @@ class ApiService {
     }
   }
 
-  // ════════════════════════════════════════
-  //  CREATE — POST /api/user
-  // ════════════════════════════════════════
   static Future<UserModel> createUser(UserModel user) async {
-    await loadToken(); // ✅ added
+    await loadToken();
     final client = _getClient();
     try {
-      final res = await client.post(
-        Uri.parse(_userBase),
-        headers: _headers,
-        body: json.encode(user.toJson()),
-      );
+      final res = await client
+          .post(
+            Uri.parse(_userBase),
+            headers: _headers,
+            body: json.encode(user.toJson()),
+          )
+          .timeout(_timeout);
       final data = _parse(res, 'POST /api/user');
       if (res.statusCode == 200 || res.statusCode == 201) {
         final obj = data is Map ? data : (data['data'] ?? data['user']);
@@ -151,18 +142,17 @@ class ApiService {
     }
   }
 
-  // ════════════════════════════════════════
-  //  UPDATE — PUT /api/user/:id
-  // ════════════════════════════════════════
   static Future<UserModel> updateUser(int id, UserModel user) async {
-    await loadToken(); // ✅ added
+    await loadToken();
     final client = _getClient();
     try {
-      final res = await client.put(
-        Uri.parse('$_userBase/$id'),
-        headers: _headers,
-        body: json.encode(user.toJson()),
-      );
+      final res = await client
+          .put(
+            Uri.parse('$_userBase/$id'),
+            headers: _headers,
+            body: json.encode(user.toJson()),
+          )
+          .timeout(_timeout);
       final data = _parse(res, 'PUT /api/user/$id');
       if (res.statusCode == 200) {
         final obj = data is Map ? data : (data['data'] ?? data['user']);
@@ -174,17 +164,13 @@ class ApiService {
     }
   }
 
-  // ════════════════════════════════════════
-  //  DELETE — DELETE /api/user/:id
-  // ════════════════════════════════════════
   static Future<void> deleteUser(int id) async {
-    await loadToken(); // ✅ added
+    await loadToken();
     final client = _getClient();
     try {
-      final res = await client.delete(
-        Uri.parse('$_userBase/$id'),
-        headers: _headers,
-      );
+      final res = await client
+          .delete(Uri.parse('$_userBase/$id'), headers: _headers)
+          .timeout(_timeout);
       dev.log('[DELETE /api/user/$id] ${res.statusCode}');
       if (res.statusCode != 200 && res.statusCode != 204) {
         throw Exception('Delete failed (${res.statusCode})');

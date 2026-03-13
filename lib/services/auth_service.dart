@@ -12,9 +12,7 @@ class AuthResult {
 }
 
 class AuthService {
-  static const String _baseUrl = 'https://sangabriel-p10-p11-3wy5.vercel.app';
-
-  // ✅ From app.js: app.use('/api/auth', authRoutes)
+  static const String _baseUrl = 'https://adet-sample.vercel.app';
   static const String _loginUrl = '$_baseUrl/api/auth/login';
   static const String _registerUrl = '$_baseUrl/api/auth/register';
 
@@ -29,14 +27,16 @@ class AuthService {
   static Future<AuthResult> login(String username, String password) async {
     final client = _getClient();
     try {
-      final res = await client.post(
-        Uri.parse(_loginUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: json.encode({'username': username, 'password': password}),
-      );
+      final res = await client
+          .post(
+            Uri.parse(_loginUrl),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: json.encode({'username': username, 'password': password}),
+          )
+          .timeout(const Duration(seconds: 15)); // ✅ timeout added
 
       final body = res.body.trim();
       if (body.isEmpty || body.startsWith('<')) {
@@ -45,27 +45,27 @@ class AuthService {
           errorMessage: 'Server error. Check your connection.',
         );
       }
-
       final data = json.decode(body);
-
       if (res.statusCode == 200) {
-        // Save token — check common token field names
         final token =
             data['token'] ?? data['accessToken'] ?? data['access_token'];
         if (token != null) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('token', token);
-          ApiService.setAuthToken(token); // share token with ApiService
+          ApiService.setAuthToken(token);
         }
         return const AuthResult(success: true);
       }
-
       return AuthResult(
         success: false,
-        errorMessage: data['message'] ?? 'Invalid username or password.',
+        errorMessage:
+            data['message'] ?? data['error'] ?? 'Invalid username or password.',
       );
     } catch (e) {
-      return AuthResult(success: false, errorMessage: e.toString());
+      return AuthResult(
+        success: false,
+        errorMessage: 'Request timed out or failed: ${e.toString()}',
+      );
     } finally {
       client.close();
     }
@@ -79,34 +79,39 @@ class AuthService {
   ) async {
     final client = _getClient();
     try {
-      final res = await client.post(
-        Uri.parse(_registerUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: json.encode({
-          'full_name': fullName,
-          'username': username,
-          'password': password,
-        }),
-      );
+      final res = await client
+          .post(
+            Uri.parse(_registerUrl),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: json.encode({
+              'fullname': fullName, // ✅ fixed: backend expects 'fullname'
+              'username': username,
+              'password': password,
+            }),
+          )
+          .timeout(const Duration(seconds: 15)); // ✅ timeout added
 
       final body = res.body.trim();
       if (body.isEmpty || body.startsWith('<')) {
         return const AuthResult(success: false, errorMessage: 'Server error.');
       }
-
       final data = json.decode(body);
       if (res.statusCode == 200 || res.statusCode == 201) {
         return const AuthResult(success: true);
       }
       return AuthResult(
         success: false,
-        errorMessage: data['message'] ?? 'Registration failed.',
+        errorMessage:
+            data['message'] ?? data['error'] ?? 'Registration failed.',
       );
     } catch (e) {
-      return AuthResult(success: false, errorMessage: e.toString());
+      return AuthResult(
+        success: false,
+        errorMessage: 'Request timed out or failed: ${e.toString()}',
+      );
     } finally {
       client.close();
     }
